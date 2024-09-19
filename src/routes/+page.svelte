@@ -1,27 +1,38 @@
 <script>
-  import { toursAndDrivers } from './data.js';
   import { db } from '$lib/firebaseConfig'; // Firebase configuration
-  import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+  import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
   import { onMount } from 'svelte';
+  import { toursAndDrivers } from './data.js'; // Importing your data.js for the Tour and Driver fields
 
-  let rows = [];
+  let rows = []; // This will be populated with Firestore data.
+  let isLoading = true; // Track loading state for better UX
 
   let focusedCell = { rowIndex: null, dayIndex: null, isTour: false, isDriver: false, isMonthCell: false, isArbeitstagen: false };
 
-  // Fetch data from Firebase Firestore on mount
+  // Fetch data from Firebase Firestore on mount, ordered by 'order' field
   onMount(async () => {
-    const querySnapshot = await getDocs(collection(db, "toursAndDrivers"));
-    querySnapshot.forEach((doc) => {
-      const rowData = doc.data();
-      rows.push({
-        id: doc.id,
-        TOUR: rowData.TOUR,
-        ARBEITSTAGEN: rowData.ARBEITSTAGEN,
-        DRIVER: rowData.DRIVER,
-        MONTH: rowData.MONTH,
-        days: rowData.days
+    try {
+      const q = query(collection(db, "toursAndDrivers"), orderBy("order", "asc"));
+      const querySnapshot = await getDocs(q);
+      const fetchedRows = [];
+      querySnapshot.forEach((doc) => {
+        const rowData = doc.data();
+        fetchedRows.push({
+          id: doc.id,
+          TOUR: rowData.TOUR,
+          ARBEITSTAGEN: rowData.ARBEITSTAGEN,
+          DRIVER: rowData.DRIVER,
+          MONTH: rowData.MONTH,
+          days: rowData.days,
+          order: rowData.order // Order field for maintaining row order
+        });
       });
-    });
+      rows = [...fetchedRows]; // Reassign rows to trigger reactivity
+      isLoading = false; // Disable loading state after data is loaded
+    } catch (e) {
+      console.error("Error fetching data: ", e);
+      isLoading = false; // Disable loading state if error occurs
+    }
   });
 
   // Save new row data to Firestore
@@ -143,6 +154,7 @@
       DRIVER: "",
       MONTH: "",
       days: Array(31).fill({ letter: "", color: "" }),
+      order: rows.length // Set the new row at the last position
     };
     rows = [
       ...rows.slice(0, index + 1),
@@ -159,9 +171,28 @@
   }
 
   function addRow() {
-    const newRow = { TOUR: "", ARBEITSTAGEN: "", DRIVER: "", MONTH: "", days: Array(31).fill({ letter: "", color: "" }) };
+    const newRow = {
+      TOUR: "",
+      ARBEITSTAGEN: "",
+      DRIVER: "",
+      MONTH: "",
+      days: Array(31).fill({ letter: "", color: "" }),
+      order: rows.length // Assign order based on current length
+    };
     rows = [...rows, newRow];
     saveRowToFirestore(newRow); // Save new row to Firestore
+  }
+
+  // This will save the 'Tour' value when it's changed
+  function updateTour(rowIndex, event) {
+    rows[rowIndex].TOUR = event.target.value;
+    updateRowInFirestore(rows[rowIndex].id, rows[rowIndex]); // Save changes to Firestore
+  }
+
+  // This will save the 'Driver' value when it's changed
+  function updateDriver(rowIndex, event) {
+    rows[rowIndex].DRIVER = event.target.value;
+    updateRowInFirestore(rows[rowIndex].id, rows[rowIndex]); // Save changes to Firestore
   }
 
   function focusCell(rowIndex, dayIndex) {
@@ -211,81 +242,100 @@
       window.removeEventListener("keydown", handleKeydown);
     };
   });
+
+  // Darker color for Saturdays and Sundays
+  function getSaturdaySundayStyles(dayIndex, month) {
+    const year = new Date().getFullYear();
+    const date = new Date(year, month - 1, dayIndex + 1);
+    const dayOfWeek = date.getDay();
+
+    if (dayOfWeek === 6) {
+      return "background-color: #b0b0b0;";
+    } else if (dayOfWeek === 0) {
+      return "background-color: #c0c0c0;";
+    }
+    return "";
+  }
 </script>
 
-<!-- Your existing table and styling below remains the same -->
-
-<table>
-  <thead>
-    <tr>
-      <th>TOUR</th>
-      <th>ARBEITSTAGEN</th>
-      <th>DRIVER</th>
-      <th>MONTH</th>
-      {#each Array(31) as _, i}
-        <th>{i + 1}</th>
-      {/each}
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each rows as row, rowIndex}
+<!-- Table HTML -->
+{#if isLoading}
+  <p>Loading...</p>
+{:else}
+  <table>
+    <thead>
       <tr>
-        <td>
-          <input type="text" bind:value={row.TOUR} class="styled-input" data-tour="{rowIndex}" on:click={() => focusTourCell(rowIndex)} list="tour-list">
-          <datalist id="tour-list">
-            {#each toursAndDrivers as item}
-              <option value={item.TOUR}></option>
-            {/each}
-          </datalist>
-        </td>
+        <th>TOUR</th>
+        <th>ARBEITSTAGEN</th>
+        <th>DRIVER</th>
+        <th>MONTH</th>
+        {#each Array(31) as _, i}
+          <th>{i + 1}</th>
+        {/each}
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each rows as row, rowIndex}
+        <tr>
+          <td>
+            <input type="text" bind:value={row.TOUR} class="styled-input" data-tour="{rowIndex}" 
+            on:input={(e) => updateTour(rowIndex, e)} list="tour-list">
+            <datalist id="tour-list">
+              {#each toursAndDrivers as item} <!-- Getting Tour values from data.js -->
+                <option value={item.TOUR}></option>
+              {/each}
+            </datalist>
+          </td>
 
-        <td
-          tabindex="0"
-          data-arbeitstagen="{rowIndex}"
-          on:click={() => focusArbeitstagenCell(rowIndex)}
-          style="background-color: #f8f8f8; text-align: center; width: 40px; height: 25px; border: 1px solid #e0e0e0;"
-        >
-          {row.ARBEITSTAGEN}
-        </td>
-
-        <td>
-          <input type="text" bind:value={row.DRIVER} class="styled-input" data-driver="{rowIndex}" on:click={() => focusDriverCell(rowIndex)} list="driver-list">
-          <datalist id="driver-list">
-            {#each toursAndDrivers as item}
-              <option value={item.DRIVER}></option>
-            {/each}
-          </datalist>
-        </td>
-
-        <td
-          tabindex="0"
-          data-month="{rowIndex}"
-          on:click={() => focusMonthCell(rowIndex)}
-          style="background-color: #f8f8f8; text-align: center; width: 40px; height: 25px; border: 1px solid #e0e0e0;"
-        >
-          {row.MONTH}
-        </td>
-
-        {#each row.days as day, dayIndex}
           <td
             tabindex="0"
-            data-cell="{rowIndex}-{dayIndex}"
-            on:click={() => focusCell(rowIndex, dayIndex)}
-            style="background-color: {day.color}; color: #000; text-align: center; width: 25px; height: 25px; border: 1px solid #e0e0e0;"
+            data-arbeitstagen="{rowIndex}"
+            on:click={() => focusArbeitstagenCell(rowIndex)}
+            style="background-color: #f8f8f8; text-align: center; width: 40px; height: 25px; border: 1px solid #e0e0e0;"
           >
-            {day.letter}
+            {row.ARBEITSTAGEN}
           </td>
-        {/each}
 
-        <td>
-          <button on:click={() => insertRowUnder(rowIndex)} class="action-button">+</button>
-          <button on:click={() => deleteRow(rowIndex)} class="action-button">✕</button>
-        </td>
-      </tr>
-    {/each}
-  </tbody>
-</table>
+          <td>
+            <input type="text" bind:value={row.DRIVER} class="styled-input" data-driver="{rowIndex}" 
+            on:input={(e) => updateDriver(rowIndex, e)} list="driver-list">
+            <datalist id="driver-list">
+              {#each toursAndDrivers as item} <!-- Getting Driver values from data.js -->
+                <option value={item.DRIVER}></option>
+              {/each}
+            </datalist>
+          </td>
+
+          <td
+            tabindex="0"
+            data-month="{rowIndex}"
+            on:click={() => focusMonthCell(rowIndex)}
+            style="background-color: #f8f8f8; text-align: center; width: 40px; height: 25px; border: 1px solid #e0e0e0;"
+          >
+            {row.MONTH}
+          </td>
+
+          {#each row.days as day, dayIndex}
+            <td
+              tabindex="0"
+              data-cell="{rowIndex}-{dayIndex}"
+              on:click={() => focusCell(rowIndex, dayIndex)}
+              style="{getSaturdaySundayStyles(dayIndex, row.MONTH)} background-color: {day.color}; color: #000; text-align: center; width: 25px; height: 25px; border: 1px solid #e0e0e0;"
+            >
+              {day.letter}
+            </td>
+          {/each}
+
+          <td>
+            <button on:click={() => insertRowUnder(rowIndex)} class="action-button">+</button>
+            <button on:click={() => deleteRow(rowIndex)} class="action-button">✕</button>
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+{/if}
 
 <button on:click={addRow} class="action-button">+ Add Row</button>
 
@@ -364,3 +414,4 @@
     outline: none;
   }
 </style>
+
