@@ -35,6 +35,11 @@
     }
   });
 
+  // Count the occurrences of a specific letter (A, X, S, F, K) in a row's days array
+  function countOccurrences(row, letter) {
+    return row.days.filter(day => day.letter === letter).length;
+  }
+
   // Save new row data to Firestore
   async function saveRowToFirestore(row) {
     try {
@@ -127,6 +132,9 @@
         break;
       case "K":
         newDays[dayIndex] = { letter: "K", color: "#9370db" };
+        break;
+      case "DEL":
+        newDays[dayIndex] = { letter: "", color: "" };
         break;
       default:
         break;
@@ -272,6 +280,11 @@
         {#each Array(31) as _, i}
           <th>{i + 1}</th>
         {/each}
+        <th style="background-color: #add8e6;">A</th>
+        <th style="background-color: #ff6347;">X</th>
+        <th style="background-color: #ffa500;">S</th>
+        <th style="background-color: #90ee90;">F</th>
+        <th style="background-color: #9370db;">K</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -327,9 +340,16 @@
             </td>
           {/each}
 
+          <!-- New columns for A, X, S, F, K counts -->
+          <td>{countOccurrences(row, 'A')}</td>
+          <td>{countOccurrences(row, 'X')}</td>
+          <td>{countOccurrences(row, 'S')}</td>
+          <td>{countOccurrences(row, 'F')}</td>
+          <td>{countOccurrences(row, 'K')}</td>
+
           <td>
-            <button on:click={() => insertRowUnder(rowIndex)} class="action-button">+</button>
-            <button on:click={() => deleteRow(rowIndex)} class="action-button">✕</button>
+            <button style="background-color: deepskyblue; color:white;" on:click={() => insertRowUnder(rowIndex)} class="action-button">+</button>
+            <button style="background-color: red; color:white;" on:click={() => deleteRow(rowIndex)} class="action-button">✕</button>
           </td>
         </tr>
       {/each}
@@ -337,7 +357,7 @@
   </table>
 {/if}
 
-<button on:click={addRow} class="action-button">+ Add Row</button>
+<button on:click={addRow} class="action-button" style="background-color: deepskyblue; color:white; padding:10px 20px;">+ Zeile hinzufügen</button>
 
 <style>
   table {
@@ -414,4 +434,3 @@
     outline: none;
   }
 </style>
-
