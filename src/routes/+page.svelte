@@ -266,6 +266,8 @@
   }
 </script>
 
+<head><title>Tourenplaner</title></head>
+
 <!-- Table HTML -->
 {#if isLoading}
   <p>Loading...</p>
@@ -275,8 +277,8 @@
       <tr>
         <th>TOUR</th>
         <th>ARBEITSTAGEN</th>
-        <th>DRIVER</th>
-        <th>MONTH</th>
+        <th>FAHRER</th>
+        <th>MONAT</th>
         {#each Array(31) as _, i}
           <th>{i + 1}</th>
         {/each}
@@ -285,7 +287,7 @@
         <th style="background-color: #ffa500;">S</th>
         <th style="background-color: #90ee90;">F</th>
         <th style="background-color: #9370db;">K</th>
-        <th>Actions</th>
+        <th>^</th>
       </tr>
     </thead>
     <tbody>
