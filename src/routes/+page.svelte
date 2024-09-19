@@ -287,7 +287,7 @@
         <th style="background-color: #ffa500;">S</th>
         <th style="background-color: #90ee90;">F</th>
         <th style="background-color: #9370db;">K</th>
-        <th>^</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
