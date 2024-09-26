@@ -2,7 +2,8 @@
   import { db } from '$lib/firebaseConfig'; // Firebase configuration
   import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
   import { onMount } from 'svelte';
-  import { toursAndDrivers } from './data.js'; // Importing your data.js for the Tour and Driver fields
+  import { tours } from './tours.js'
+  import { fahrer } from './fahrer.js';
 
   let rows = []; // This will be populated with Firestore data.
   let isLoading = true; // Track loading state for better UX
@@ -297,8 +298,8 @@
             <input type="text" bind:value={row.TOUR} class="styled-input" data-tour="{rowIndex}" 
             on:input={(e) => updateTour(rowIndex, e)} list="tour-list">
             <datalist id="tour-list">
-              {#each toursAndDrivers as item} <!-- Getting Tour values from data.js -->
-                <option value={item.TOUR}></option>
+              {#each tours as tour}
+                <option value={tour}></option>
               {/each}
             </datalist>
           </td>
@@ -316,8 +317,8 @@
             <input type="text" bind:value={row.DRIVER} class="styled-input" data-driver="{rowIndex}" 
             on:input={(e) => updateDriver(rowIndex, e)} list="driver-list">
             <datalist id="driver-list">
-              {#each toursAndDrivers as item} <!-- Getting Driver values from data.js -->
-                <option value={item.DRIVER}></option>
+              {#each fahrer as driver}
+                <option value={driver}></option>
               {/each}
             </datalist>
           </td>
